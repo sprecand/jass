@@ -24,8 +24,16 @@ type team struct {
 
 type round struct {
 	trump          int
+	points1        int
+	points2        int
+	startingPlayer int
+}
+
+type stich struct {
 	cardsPlayed    []card
 	startingPlayer int
+	points         int
+	winningPlayer  int
 }
 
 func createCardStack() [36]card {
@@ -124,28 +132,32 @@ func showCards(player player) {
 	}
 }
 
-func getTrump() int {
+func getTrump(currentPlayer player) int {
 	var trump int
+	showCards(currentPlayer)
 	fmt.Println("What should be trump(0:E, 1:R, 2:Sche, 3:Schi, 4:O, 5:U): ")
 	fmt.Scanln(&trump)
 	fmt.Println(getColor(trump), "is trump")
 	return trump
 }
 
-func playCards(currentRound round, players [4]player) round {
+func playCards(currentStich stich, players [4]player) stich {
 	var currentCardNumb int
 	var currentCard card
+	var currentPlayer player
 
 	for i := 0; i < 4; i++ {
-		showCards(players[(currentRound.startingPlayer+i)%4])
+		currentPlayer = players[(currentStich.startingPlayer+i)%4]
+		showCards(currentPlayer)
 		fmt.Println("What card to play: ")
 		fmt.Scanln(&currentCardNumb)
-		currentCard = players[(currentRound.startingPlayer+i)%4].hand[currentCardNumb]
+		currentCard = currentPlayer.hand[currentCardNumb]
+		currentPlayer.hand[currentCardNumb].isPlayed = true
 		fmt.Println(getCardName(currentCard), "is played")
-		currentRound.cardsPlayed = append(currentRound.cardsPlayed, currentCard)
+		currentStich.cardsPlayed = append(currentStich.cardsPlayed, currentCard)
 	}
 
-	return currentRound
+	return currentStich
 }
 
 func isHigherCard(card1 card, card2 card, trump int, outcardColor int) (card card) {
@@ -181,40 +193,90 @@ func isHigherCard(card1 card, card2 card, trump int, outcardColor int) (card car
 	return card1
 }
 
-func evalStich(currentRound round) (takeStich int) {
+func countCard(currentCard card, trump int) int {
+	if currentCard.color == trump {
+		if currentCard.figure == 5 {
+			return 20
+		} else if currentCard.figure == 3 {
+			return 14
+		}
+	}
+	if currentCard.figure == 8 {
+		return 11
+	} else if currentCard.figure == 7 {
+		return 4
+	} else if currentCard.figure == 6 {
+		return 3
+	} else if currentCard.figure == 5 {
+		return 2
+	} else if currentCard.figure == 4 {
+		return 10
+	}
+	return 0
+
+}
+
+func countStich(cardsPlayed []card, trump int) int {
+	var score int
+	score = 0
+	for i := 0; i < 4; i++ {
+		score += countCard(cardsPlayed[i], trump)
+	}
+	return score
+}
+
+func evalStich(currentStich stich, trump int) stich {
 	var outcardColor int
 	var currentBest card
 
-	outcardColor = currentRound.cardsPlayed[0].color
-	currentBest = currentRound.cardsPlayed[0]
-	takeStich = 0
+	outcardColor = currentStich.cardsPlayed[0].color
+	currentBest = currentStich.cardsPlayed[0]
 
 	for i := 1; i < 4; i++ {
-		if isHigherCard(currentBest, currentRound.cardsPlayed[i], currentRound.trump, outcardColor) != currentBest {
-			currentBest = currentRound.cardsPlayed[i]
-			takeStich = i
+		if isHigherCard(currentBest, currentStich.cardsPlayed[i], trump, outcardColor) != currentBest {
+			currentBest = currentStich.cardsPlayed[i]
+			currentStich.winningPlayer = i
 		}
 	}
 
-	fmt.Println("Player", takeStich, "sticht with", getCardName(currentBest))
+	currentStich.points = countStich(currentStich.cardsPlayed, trump)
 
-	return takeStich
+	fmt.Println("Player", currentStich.winningPlayer, "sticht with", getCardName(currentBest), "counting", currentStich.points, "points")
+
+	return currentStich
 }
 
-func playRound(players [4]player) {
-	showCards(players[0])
-	var trump = getTrump()
-	var round = round{trump, nil, 1}
-	round = playCards(round, players)
-	evalStich(round)
+func playRound(players [4]player, currentRound round) {
+	var currentStich stich
+	var startingPlayer int
+	startingPlayer = currentRound.startingPlayer
+	for i := 0; i < 9; i++ {
+		currentStich = stich{nil, startingPlayer, 0, startingPlayer}
+		currentStich = playCards(currentStich, players)
+		currentStich = evalStich(currentStich, currentRound.trump)
+		if currentStich.winningPlayer == 0 || currentStich.winningPlayer == 2 {
 
+		}
+	}
 }
 
 func main() {
+	var startPlayer int
+	var trump int
+	var currentRound round
+
 	var cards = createCardStack()
 	var shuffledStack = shuffleCardStack(cards)
 	var players = distributeCards(shuffledStack)
 	sortCards(players)
+	var team1 = team{0, 0}
+	var team2 = team{1, 0}
 
-	playRound(players)
+	startPlayer = 0
+	for team1.points < 2500 && team2.points < 2500 {
+		trump = getTrump(players[startPlayer])
+		currentRound = round{trump, 0, 0, startPlayer}
+		playRound(players, currentRound)
+		startPlayer += 1
+	}
 }
