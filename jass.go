@@ -47,9 +47,11 @@ func createCardStack() [36]card {
 }
 
 func shuffleCardStack(cardStack [36]card) [36]card {
-	rand.Shuffle(36, func(i, j int) {
-		cardStack[i], cardStack[j] = cardStack[j], cardStack[i]
-	})
+	for i := 0; i < 1000; i++ {
+		rand.Shuffle(36, func(i, j int) {
+			cardStack[i], cardStack[j] = cardStack[j], cardStack[i]
+		})
+	}
 	return cardStack
 }
 
@@ -209,7 +211,7 @@ func isHigherCard(card1 card, card2 card, trump int, outcardColor int) (card car
 	} else if card2.color == trump {
 		return card2
 	} else if card1.color == outcardColor && card2.color == outcardColor {
-		if card1.figure > card2.figure {
+		if (card1.figure > card2.figure && trump != 5) || (card1.figure < card2.figure && trump == 5) {
 			return card1
 		} else {
 			return card2
@@ -230,7 +232,7 @@ func countCard(currentCard card, trump int) int {
 			return 14
 		}
 	}
-	if currentCard.figure == 8 {
+	if currentCard.figure == 8 && trump != 5 {
 		return 11
 	} else if currentCard.figure == 7 {
 		return 4
@@ -240,6 +242,10 @@ func countCard(currentCard card, trump int) int {
 		return 2
 	} else if currentCard.figure == 4 {
 		return 10
+	} else if currentCard.figure == 2 && (trump == 5 || trump == 4) {
+		return 8
+	} else if currentCard.figure == 0 && trump == 5 {
+		return 11
 	}
 	return 0
 
